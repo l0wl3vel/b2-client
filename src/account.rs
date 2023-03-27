@@ -30,6 +30,8 @@ pub struct Authorization<C>
 {
     pub(crate) client: C,
     pub(crate) account_id: String,
+    pub(crate) key_id: String,
+    pub(crate) key: String,
     // The authorization token to use for all future API calls.
     //
     // The token is valid for no more than 24 hours.
@@ -55,6 +57,7 @@ impl<C> Authorization<C>
     pub(crate) fn new(
         client: C,
         account_id: String,
+        account_key: String,
         authorization_token: String,
         allowed: Capabilities,
         api_url: String,
@@ -66,6 +69,7 @@ impl<C> Authorization<C>
         Self {
             client,
             account_id,
+            account_key,
             authorization_token,
             allowed,
             api_url,
@@ -131,10 +135,12 @@ struct ProtoAuthorization {
 }
 
 impl ProtoAuthorization {
-    fn create_authorization<C: HttpClient>(self, c: C) -> Authorization<C> {
+    fn create_authorization<C: HttpClient>(self,key_id: &str, key: &str, c: C) -> Authorization<C> {
         Authorization {
             client: c,
             account_id: self.account_id,
+            key_id: key_id.to_string(),
+            key: key.to_string(),
             authorization_token: self.authorization_token,
             allowed: self.allowed,
             api_url: self.api_url,
@@ -272,7 +278,7 @@ pub async fn authorize_account<C, E>(mut client: C, key_id: &str, key: &str)
     let res = req.send().await?;
 
     let auth: B2Result<ProtoAuthorization> = serde_json::from_slice(&res)?;
-    auth.map(|v| v.create_authorization(client)).into()
+    auth.map(|v| v.create_authorization(key_id, key, client)).into()
 }
 
 /// A request to create a B2 API key with certain capabilities.
